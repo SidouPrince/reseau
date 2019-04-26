@@ -1,8 +1,30 @@
 #ifndef FONCTIONS_H
 #define FONCTIONS_H
-
+#include <stdbool.h>
+/***************************Les variables des differents tlv***************************/
 unsigned char source_id_court[8], source_id_long[8], destination_id[8], ip[16], port[2],
 sender_id[8], nonce[4], type[1], data[40];
+/****************************************************************************************/
+/********************La structure Liste des voisin potentiels****************************/
+typedef struct voisins_potentiels voisins_potentiels;
+struct voisins_potentiels{
+    unsigned char ip[16];
+    unsigned char port[2];
+    voisins_potentiels *suivant;
+};
+
+/****************************************************************************************/
+extern voisins_potentiels* allouer(unsigned char* ip, unsigned char *port);
+
+/***********************************************************/
+extern voisins_potentiels* ajoutVP(voisins_potentiels* liste, unsigned char* ip, unsigned char *port);
+
+/**************************************************************************************/
+extern void afficherListe(voisins_potentiels* liste);
+
+/***********************************************************/
+extern bool recherche(voisins_potentiels* liste, unsigned char* ip);
+extern short size(voisins_potentiels* liste);
 
 /**********************************************/
 extern void helloCourt(unsigned char* tableau);

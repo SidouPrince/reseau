@@ -7,6 +7,87 @@
 unsigned char source_id_court[8], source_id_long[8], destination_id[8], ip[16], port[2],
 sender_id[8], nonce[4], type[1], data[40];
 
+voisins_potentiels* liste = NULL;
+
+/******************Liste des voisins potentiels ***************/
+voisins_potentiels* allouer(unsigned char *ip, unsigned char *port){
+    voisins_potentiels* ptr = malloc(sizeof(voisins_potentiels));
+    if ( ptr == NULL )
+    {
+	perror("malloc allocation");
+    	return NULL;
+    }
+    memcpy(ptr -> ip, ip, 16);
+    memcpy(ptr -> port, port, 2);
+    ptr -> suivant = NULL;
+    return ptr;
+}
+
+bool recherche(voisins_potentiels* liste, unsigned char* ip){
+    voisins_potentiels* ptr = liste;
+    while( ptr != NULL ){
+	if ( strcmp((char*)ip, (char*)ptr->ip) == 0 )
+	{
+		return true;
+	}
+    ptr = ptr -> suivant;
+    }
+    return false;	
+}
+
+voisins_potentiels* ajoutVP(voisins_potentiels* liste, unsigned char *ip, unsigned char *port){
+    voisins_potentiels* p = allouer(ip, port);
+    if ( p == NULL ){
+	perror("malloc allocation");
+	return NULL;	
+    }
+    
+    if ( liste == NULL )//la liste est vide
+    {
+	printf("ouups\n");
+    	liste = p;
+	return liste;
+    }else{
+	/*la liste n'est pas vide
+	  avant d'inserer faut effectuer une recherche
+	*/
+	if ( !recherche(liste, ip) )
+	{
+	    printf("Nouvelle adresse \n");
+	    p -> suivant = liste;
+	    liste = p;
+	    return liste;
+	}else{    
+	    //il existe déja
+	    printf("adresse deja existante\n");
+	    return liste;
+	}
+    }
+
+}
+
+
+void afficherListe(voisins_potentiels* liste){
+    voisins_potentiels * ptr = liste;
+    
+    while( ptr != NULL ){
+	unsigned char *tmp = ptr -> ip;
+	affiche(tmp, 16);
+	ptr = ptr -> suivant;
+    }
+}
+
+short size(voisins_potentiels* liste){
+    int cpt = 0;
+    if ( liste == NULL ) return 0;
+    voisins_potentiels* p = liste;
+    while( p != NULL ){
+	cpt++;
+	p = p->suivant;
+    }
+    return cpt;
+}
+/**************************************************************/
 /**********************************************/
 void helloCourt(unsigned char* tableau){
     memcpy(source_id_court, &tableau[0], 8);
@@ -77,6 +158,7 @@ void afficher_message(unsigned char tab[], int taille){
 		     affiche(ip, 16);
 		     printf("Le port est : ");
 		     affiche(port, 2);
+		     liste = ajoutVP(liste, ip, port);
 		     break;
 	    case 4: 
 		    printf("******************TLV DATA****************");
