@@ -87,7 +87,29 @@ short size(voisins_potentiels* liste){
     }
     return cpt;
 }
-/**************************************************************/
+/*******************************************Voisins*******************************************************/
+voisins* allouerVoisins(unsigned char *ip, unsigned char *port, unsigned char *source_id, int type){
+    voisins* ptr = malloc(sizeof(voisins));
+    if ( ptr == NULL )
+    {
+	perror("malloc allocation");
+    	return NULL;
+    }
+    memcpy(ptr -> ip, ip, 16);
+    memcpy(ptr -> port, port, 2);
+    memcpy(ptr -> source_id, source_id, 8);
+    time(&ptr->dateTLV);
+    if ( type == 0 )
+    {
+    	//tlv court
+	ptr->dateLong = 0;
+    }else{
+	time(&ptr -> dateLong);
+    }
+
+    ptr -> suivant = NULL;
+    return ptr;
+}
 /**********************************************/
 void helloCourt(unsigned char* tableau){
     memcpy(source_id_court, &tableau[0], 8);
