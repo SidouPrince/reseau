@@ -1,13 +1,13 @@
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "fonctions.h"
+#include <time.h>
+#include <string.h>
 
 unsigned char source_id_court[8], source_id_long[8], destination_id[8], ip[16], port[2],
 sender_id[8], nonce[4], type[1], data[40];
-
-voisins_potentiels* liste = NULL;
+unsigned char my_id[8], msgGoAway[100], msgWarning[100];
 
 /******************Liste des voisins potentiels ***************/
 voisins_potentiels* allouer(unsigned char *ip, unsigned char *port){
@@ -44,7 +44,6 @@ voisins_potentiels* ajoutVP(voisins_potentiels* liste, unsigned char *ip, unsign
     
     if ( liste == NULL )//la liste est vide
     {
-	printf("ouups\n");
     	liste = p;
 	return liste;
     }else{
@@ -53,13 +52,11 @@ voisins_potentiels* ajoutVP(voisins_potentiels* liste, unsigned char *ip, unsign
 	*/
 	if ( !recherche(liste, ip) )
 	{
-	    printf("Nouvelle adresse \n");
 	    p -> suivant = liste;
 	    liste = p;
 	    return liste;
 	}else{    
 	    //il existe déja
-	    printf("adresse deja existante\n");
 	    return liste;
 	}
     }
@@ -103,12 +100,68 @@ voisins* allouerVoisins(unsigned char *ip, unsigned char *port, unsigned char *s
     {
     	//tlv court
 	ptr->dateLong = 0;
+	ptr -> type = 0;
     }else{
+	//tlv long
+	ptr -> type = 1; //symetrique
 	time(&ptr -> dateLong);
     }
 
     ptr -> suivant = NULL;
     return ptr;
+}
+/**********************************************************/
+bool rechercheVoisins(voisins *liste, unsigned char *ip){
+    voisins *p = liste;
+    while( p != NULL ){
+	if ( p -> ip == ip ) return true;
+	p = p -> suivant;
+    }
+    return false;
+}
+int recherche_symetrique(){
+    int cmp = 0;
+    while( listeVoisins != NULL ){
+	if ( listeVoisins -> type == 1 ){
+	    cmp++;
+	    listeVoisins = listeVoisins -> suivant;
+	}
+    listeVoisins = listeVoisins -> suivant;
+    }
+    return cmp;
+}
+/****************************************************************/
+voisins* ajoutVoisins(voisins *liste, unsigned char *ip, unsigned char *port, unsigned char *source_id, int type){
+    voisins *p = allouerVoisins(ip, port, source_id, type);
+    if ( liste == NULL )
+    {
+    	liste = p;
+	return liste;
+    }
+    if ( !rechercheVoisins(liste, ip) )
+    {
+	//il n'existe pas !
+	p -> suivant = liste;
+	liste = p;
+	return liste;
+    }else{
+	return liste;
+    }
+}
+
+void afficherListeVoisins(voisins *liste){
+    voisins * ptr = liste;
+    
+    while( ptr != NULL ){
+	// unsigned char *tmp = ptr -> ip;
+	// affiche(tmp, 16);
+	printf("%d\n", ptr->type);
+	ptr = ptr -> suivant;
+    }
+}
+
+void supprimerVoisin(voisins* liste, unsigned char *ip){
+
 }
 /**********************************************/
 void helloCourt(unsigned char* tableau){
@@ -133,6 +186,21 @@ void dataTLV(unsigned char *tab, int taille){
     memcpy(type, &tab[12], 1);
     memcpy(data, &tab[13], (taille-13));
 }
+/***************************************************/
+void ack(unsigned char *tab){
+  memcpy(sender_id,&tab[0],8);
+  memcpy(nonce,&tab[8],4);
+}
+/*****************************************************/
+void goAway(unsigned char *tab){
+  int length = tab[0];
+  memcpy(msgGoAway,&tab[1],length);
+}
+/****************************************************/
+void warning(unsigned char *tab){
+    int length = tab[0];
+  memcpy(msgWarning,&tab[1],length);
+}
 /**************************************************/
 void affiche(unsigned char tab[], int taille){
     for (int i = 0; i < taille ; ++i)
@@ -149,8 +217,38 @@ void afficher_message(unsigned char tab[], int taille){
     }
     printf("\n");
 }
-/*****************************************************/
- void parserTLV(unsigned char tab[], int taille){
+   /****************Envoi hello court*********************/
+void envoiHelloCourt(unsigned char *datagramme, unsigned char *my_id){
+    datagramme[0] = 2;
+    datagramme[1] = 8;
+    memcpy(&datagramme[2], my_id, 8);
+}
+
+ /****************Envoi hello long*********************/
+void envoiHelloLong(unsigned char *datagramme, unsigned char *my_id, unsigned char *destination_id){
+    datagramme[0] = 2;
+    datagramme[1] = 16;
+    memcpy(&datagramme[2], my_id, 8);
+    memcpy(&datagramme[10], destination_id, 8);
+}
+/****************Envoi GoAwway*********************/
+void envoiGoAway(unsigned char *datagramme, int code,  char *message){
+    datagramme[0] = 6;
+    datagramme[1] = 1+strlen(message);
+    datagramme[2] = code;
+    memcpy(&datagramme[3], message, strlen(message));
+}
+
+/**********************************************************/
+void generationID(unsigned char* id){
+    srand(time(NULL));
+    for (int i = 0; i < 8; ++i)
+    {
+	id[i] = (rand()%100)+1;
+    }
+}
+/**********************************************************************************/
+ void parserTLV(unsigned char tab[], int taille, unsigned char *src_ip, unsigned char *src_port){
      int i = 0;
      while( i < taille ){
 	 switch (tab[i]){ //exactement ou se trouve le début de tlv
@@ -164,12 +262,16 @@ void afficher_message(unsigned char tab[], int taille){
 			helloCourt(&tab[i+2]);
 			affiche(source_id_court, 8);
 			i = i + 10; //pour passer au tlv suivant
+			listeVoisins = ajoutVoisins(listeVoisins, src_ip, src_port, source_id_court, 0);
+			
 		    }else{
 			printf("*********Hello Long************\n");
 			helloLong(&tab[i+2]);
 			affiche(source_id_long, 8);
 			affiche(destination_id, 8);
 			i = i + 18; //pour passer au tlv suivant
+			listeVoisins = ajoutVoisins(listeVoisins, ip, port, source_id_long, 1);
+			
 		    }
 		    break;
              case 3: 

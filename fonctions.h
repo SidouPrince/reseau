@@ -21,10 +21,13 @@ struct voisins{
     unsigned char ip[16];
     unsigned char port[2];
     unsigned char source_id[8];
+    int type;
     time_t dateTLV;
     time_t dateLong;
     voisins *suivant;
 };
+voisins_potentiels* liste = NULL;
+static voisins* listeVoisins;
 
 /***************************Voisins Potentiels**********************************/
 extern voisins_potentiels* allouer(unsigned char* ip, unsigned char *port);
@@ -40,13 +43,18 @@ extern void neighbor(unsigned char * tableau);
 extern void dataTLV(unsigned char *tab, int taille);
 extern void affiche(unsigned char tab[], int taille);
 extern void afficher_message(unsigned char tab[], int taille);
-extern void parserTLV(unsigned char tab[], int taille);
+extern void parserTLV(unsigned char tab[], int taille, unsigned char *ip, unsigned char *port);
+extern void envoiHelloCourt(unsigned char *datagramme, unsigned char* my_id);
+extern void envoiHelloLong(unsigned char *datagramme, unsigned char* my_id, unsigned char* destination_id);
+extern void generationID(unsigned char* mon_id);
+extern void envoiGoAway(unsigned char* request, int code, char* message);
 
 /**************************************Voisins Hello**************************************/
 extern voisins* allouerVoisins(unsigned char* ip, unsigned char *port, unsigned char *source_id, int type);
-// extern voisins* ajoutVoisins(voisins* liste, unsigned char* ip, unsigned char *port, unsigned char *source_id);
-// extern void afficherListe(voisins* liste);
-// extern bool recherche(voisins* liste, unsigned char* ip);
+extern voisins* ajoutVoisins(voisins* liste, unsigned char* ip, unsigned char *port, unsigned char *source_id, int type);
+extern void afficherListeVoisins(voisins* liste);
+extern bool rechercheVoisins(voisins* liste, unsigned char* ip);
+extern int recherche_symetrique();
 /******************************************************************************************/
 
 #endif
